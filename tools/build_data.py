@@ -42,11 +42,10 @@ def main():
             all_codes[c["code"]] = sub["name"]
         subjects.append({**sub, "curriculum": cur, "knowledge": [], "questions": []})
 
-    # 跨科題目可以引用任何一科的代碼
+    # 各科題目與知識點都可以引用任何一科的代碼（例如生物題引用化學的碳循環），方便跨科連結
+    valid = set(all_codes)
     for s in subjects:
         d = os.path.join(DATA, s["dir"])
-        own = {c["code"] for c in s["curriculum"]["codes"]}
-        valid = set(all_codes) if s["id"] == "int" else own
         for p in sorted(glob.glob(os.path.join(d, "knowledge", "*.json"))):
             u = load(p)
             if u["id"] in seen_units:
