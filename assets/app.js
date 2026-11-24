@@ -500,7 +500,7 @@
             <label class="check"><input type="radio" name="mode" value="std" checked> 標準（接近學測）</label>
             <label class="check"><input type="radio" name="mode" value="hard"> 挑戰（中難題為主）</label>
           </fieldset>
-          <div class="row"><button class="btn primary" type="submit">產生試卷（12 單選＋6 多選＋1 混合題組）</button></div>
+          <div class="row"><button class="btn primary" type="submit">產生試卷（10 單選＋5 多選＋1 混合題組，滿分 100）</button></div>
         </form>
       </section>
       <h2>單元試卷</h2>
@@ -556,11 +556,14 @@
       // 盡量讓單元分散：依單元順序排列
       return out.sort((a, b) => unitById[a.unitId].order - unitById[b.unitId].order);
     };
-    const singles = drawType("單選", 12), multis = drawType("多選", 6);
+    // 配分：單選 10 題 × 4 分；混合題保留原配分（易 30、中難 20）；多選 5 題平分剩下的分數，使總分為 100
+    const singles = drawType("單選", 10), multis = drawType("多選", 5);
     const mxPool = mixeds.filter((m) => us.includes(m.unitId));
     const prefer = mxPool.filter((m) => (mode === "basic" ? m.level === "易" : mode === "hard" ? m.level === "難" : m.level === "中"));
     const mx = shuffle(prefer.length ? prefer : mxPool)[0];
-    const items = [...singles.map((q) => ({ id: q.id, pts: 4 })), ...multis.map((q) => ({ id: q.id, pts: 6 }))];
+    const mxTotal = mx ? mx.points.reduce((a, b) => a + b, 0) : 0;
+    const multiPts = multis.length ? (100 - 4 * singles.length - mxTotal) / multis.length : 0;
+    const items = [...singles.map((q) => ({ id: q.id, pts: 4 })), ...multis.map((q) => ({ id: q.id, pts: multiPts }))];
     const exam = { id: "mix", title: `綜合模擬卷（${{ basic: "基礎", std: "標準", hard: "挑戰" }[mode]}）`, items, mixed: mx ? [mx.id] : [],
       minutes: 60, start: Date.now(), answers: {}, mixedText: {}, submitted: false };
     sessionSet("exam", exam);
@@ -585,6 +588,9 @@
       </div>`;
     };
     const mixedTotal = mxs.reduce((a, m) => a + m.points.reduce((x, y) => x + y, 0), 0);
+    // 題號依卷面順序：單選 → 多選 → 混合題
+    const singlesHtml = singles.map(qBlock).join("");
+    const multisHtml = multis.map(qBlock).join("");
     let mixedHtml = "";
     mxs.forEach((m) => {
       mixedHtml += `<div class="exam-q"><div class="q-head">${levelChip(m.level)}${codeChips(m.codes)}<span class="muted small">${esc(m.id)}</span></div>
@@ -614,9 +620,9 @@
         <div class="row" style="margin-top:10px"><a class="btn" href="#/exam">回試卷列表</a><button class="btn" id="retake">重新作答</button><a class="btn" href="#/review">錯題本</a></div></div>`
       : `<p class="muted small">建議作答時間 ${ex.minutes} 分鐘。作答會自動暫存，重新整理頁面不會遺失。</p>`}
       <section class="card">
-        ${singles.length ? `<div class="exam-sec"><h2 style="margin-top:0">一、單選題（每題 ${singlePts} 分，共 ${singlePts * singles.length} 分）</h2>${singles.map(qBlock).join("")}</div>` : ""}
+        ${singles.length ? `<div class="exam-sec"><h2 style="margin-top:0">一、單選題（每題 ${singlePts} 分，共 ${singlePts * singles.length} 分）</h2>${singlesHtml}</div>` : ""}
         ${multis.length ? `<div class="exam-sec"><h2>二、多選題（每題 ${multiPts} 分，共 ${multiPts * multis.length} 分）</h2>
-          <p class="small muted">每題有 5 個選項，至少有 1 個正確。所有選項均答對得全部分數；答錯 1 個選項得 60%；答錯 2 個得 20%；答錯多於 2 個或未作答得 0 分。</p>${multis.map(qBlock).join("")}</div>` : ""}
+          <p class="small muted">每題有 5 個選項，至少有 1 個正確。所有選項均答對得全部分數；答錯 1 個選項得 60%；答錯 2 個得 20%；答錯多於 2 個或未作答得 0 分。</p>${multisHtml}</div>` : ""}
         ${mxs.length ? `<div class="exam-sec"><h2>三、混合題（共 ${mixedTotal} 分）</h2>${mixedHtml}</div>` : ""}
       </section>
       <div class="sticky-bar">

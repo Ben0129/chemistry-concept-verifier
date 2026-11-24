@@ -232,6 +232,7 @@ table.list th { color: var(--muted); font-weight: 600; }
   .hbar { grid-template-columns: 96px 1fr 56px; }
   .card { padding: 14px 14px; }
   .hero h1 { font-size: 1.45rem; }
+  .sheet { flex-wrap: nowrap; overflow-x: auto; width: 100%; padding-bottom: 4px; }
 }
 @media print {
   .topbar, .footer, .sticky-bar, .btn { display: none !important; }
