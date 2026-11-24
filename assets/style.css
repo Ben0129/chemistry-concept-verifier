@@ -136,6 +136,18 @@ fieldset { border: 1px solid var(--border); border-radius: var(--radius); paddin
 legend { padding: 0 6px; font-weight: 600; }
 .check { display: inline-flex; align-items: center; gap: 6px; margin: 4px 14px 4px 0; cursor: pointer; }
 
+/* 科目 */
+.subj-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin: 4px 0 14px; }
+.subj-tabs a { padding: 4px 14px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface); color: var(--muted); font-size: .92rem; }
+.subj-tabs a:hover { text-decoration: none; border-color: var(--sc, var(--accent)); }
+.subj-tabs a.active { background: var(--sc, var(--accent)); border-color: var(--sc, var(--accent)); color: #fff; font-weight: 600; }
+.chip.subj { color: var(--sc); border-color: var(--sc); font-weight: 600; }
+.subj-card { border-top: 4px solid var(--sc); }
+.subj-head { border-left: 5px solid var(--sc); padding-left: 10px; }
+.subj-name { border-left: 4px solid var(--sc); padding-left: 8px; }
+.unit-group { padding: 6px 0 8px; border-bottom: 1px dashed var(--border); }
+.unit-group:last-of-type { border-bottom: 0; }
+
 /* 知識庫 */
 .kb-layout { display: grid; grid-template-columns: 220px 1fr; gap: 20px; align-items: start; }
 .toc { position: sticky; top: 72px; }

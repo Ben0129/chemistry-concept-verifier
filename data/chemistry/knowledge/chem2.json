@@ -1,12 +1,12 @@
 {
-  "id": "u2",
+  "id": "chem2",
   "order": 2,
   "title": "物質的構造",
   "subunits": "U4 化學鍵與物質的結構",
   "summary": "原子以離子鍵、共價鍵或金屬鍵結合；鍵的種類決定粒子如何排列，也決定熔點、導電性、硬度等性質。",
   "topics": [
     {
-      "id": "u2-t1",
+      "id": "chem2-t1",
       "title": "化學鍵的種類",
       "codes": ["CCb-Vc-1"],
       "points": [
@@ -26,7 +26,7 @@
       ]
     },
     {
-      "id": "u2-t2",
+      "id": "chem2-t2",
       "title": "離子化合物",
       "codes": ["CAb-Vc-3", "CCb-Vc-1"],
       "points": [
@@ -41,7 +41,7 @@
       ]
     },
     {
-      "id": "u2-t3",
+      "id": "chem2-t3",
       "title": "共價鍵與路易斯結構",
       "codes": ["CCb-Vc-1"],
       "points": [
@@ -66,7 +66,7 @@
       "exam_tips": ["先算總價電子對數，再扣掉鍵結電子對，就是未共用電子對數，可用來快速驗算。"]
     },
     {
-      "id": "u2-t4",
+      "id": "chem2-t4",
       "title": "分子化合物與網狀固體",
       "codes": ["CAb-Vc-3", "CCb-Vc-2"],
       "points": [
@@ -81,7 +81,7 @@
       ]
     },
     {
-      "id": "u2-t5",
+      "id": "chem2-t5",
       "title": "金屬與合金",
       "codes": ["CCb-Vc-1", "CCb-Vc-2", "CAb-Vc-2"],
       "points": [
@@ -90,7 +90,7 @@
       ]
     },
     {
-      "id": "u2-t6",
+      "id": "chem2-t6",
       "title": "結構決定性質（總整理）",
       "codes": ["CCb-Vc-2", "CAb-Vc-3"],
       "points": [

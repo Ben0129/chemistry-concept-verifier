@@ -1,0 +1,10 @@
+{
+  "title": "學測自然科統整複習",
+  "subjects": [
+    { "id": "phys", "name": "物理", "dir": "physics", "color": "#2f6fdf" },
+    { "id": "chem", "name": "化學", "dir": "chemistry", "color": "#c2410c" },
+    { "id": "bio", "name": "生物", "dir": "biology", "color": "#15803d" },
+    { "id": "earth", "name": "地球科學", "dir": "earth", "color": "#7c3aed" },
+    { "id": "int", "name": "跨科統整", "dir": "integrated", "color": "#0e7490" }
+  ]
+}

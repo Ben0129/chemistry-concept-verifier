@@ -1,12 +1,12 @@
 {
-  "id": "u6",
+  "id": "chem6",
   "order": 6,
   "title": "生活中的化學",
   "subunits": "U9 生物分子與界面活性劑、U10 化學與生活、環境、永續",
   "summary": "學測素養題的主要來源：生物分子、肥皂與清潔劑、淨水、藥物、新材料，以及酸雨、暖化、臭氧層、永續與能源等議題。",
   "topics": [
     {
-      "id": "u6-t1",
+      "id": "chem6-t1",
       "title": "生物體中的重要分子",
       "codes": ["CJf-Vc-1"],
       "points": [
@@ -29,7 +29,7 @@
       ]
     },
     {
-      "id": "u6-t2",
+      "id": "chem6-t2",
       "title": "界面活性劑：肥皂與清潔劑",
       "codes": ["CJf-Vc-2", "CJf-Vc-3"],
       "points": [
@@ -45,7 +45,7 @@
       ]
     },
     {
-      "id": "u6-t3",
+      "id": "chem6-t3",
       "title": "水的處理",
       "codes": ["CMc-Vc-1", "CNa-Vc-2", "CCa-Vc-1"],
       "points": [
@@ -60,7 +60,7 @@
       ]
     },
     {
-      "id": "u6-t4",
+      "id": "chem6-t4",
       "title": "常見藥品",
       "codes": ["CMc-Vc-2", "CMb-Vc-1"],
       "points": [
@@ -72,7 +72,7 @@
       ]
     },
     {
-      "id": "u6-t5",
+      "id": "chem6-t5",
       "title": "先進材料與科技",
       "codes": ["CMc-Vc-3", "CMb-Vc-2"],
       "points": [
@@ -85,7 +85,7 @@
       ]
     },
     {
-      "id": "u6-t6",
+      "id": "chem6-t6",
       "title": "化學工業與綠色化學",
       "codes": ["CMa-Vc-1", "CMb-Vc-1"],
       "points": [
@@ -96,7 +96,7 @@
       ]
     },
     {
-      "id": "u6-t7",
+      "id": "chem6-t7",
       "title": "化學與環境",
       "codes": ["CMe-Vc-1", "CMe-Vc-2", "CMe-Vc-3", "CMe-Vc-4"],
       "points": [
@@ -112,7 +112,7 @@
       ]
     },
     {
-      "id": "u6-t8",
+      "id": "chem6-t8",
       "title": "永續發展、循環與能源",
       "codes": ["CNa-Vc-1", "CNa-Vc-3", "CNa-Vc-4", "CNc-Vc-1"],
       "points": [

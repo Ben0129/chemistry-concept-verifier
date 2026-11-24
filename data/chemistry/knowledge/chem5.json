@@ -1,12 +1,12 @@
 {
-  "id": "u5",
+  "id": "chem5",
   "order": 5,
   "title": "常見的化學反應",
   "subunits": "U7 酸鹼反應、U8 氧化還原反應",
   "summary": "兩大類最常見的反應：酸鹼反應看 H^{+} 與 OH^{−}，氧化還原反應看電子的得失。學測常結合生活情境（制酸劑、暖暖包、電池、金屬防鏽）出題。",
   "topics": [
     {
-      "id": "u5-t1",
+      "id": "chem5-t1",
       "title": "阿瑞尼斯酸鹼",
       "codes": ["CJd-Vc-2"],
       "points": [
@@ -22,7 +22,7 @@
       ]
     },
     {
-      "id": "u5-t2",
+      "id": "chem5-t2",
       "title": "水的自解離與 pH",
       "codes": ["CJd-Vc-1", "CJd-Vc-3"],
       "points": [
@@ -43,7 +43,7 @@
       ]
     },
     {
-      "id": "u5-t3",
+      "id": "chem5-t3",
       "title": "強酸、弱酸與強鹼、弱鹼",
       "codes": ["CJd-Vc-4"],
       "points": [
@@ -58,7 +58,7 @@
       ]
     },
     {
-      "id": "u5-t4",
+      "id": "chem5-t4",
       "title": "酸鹼中和與滴定",
       "codes": ["CJd-Vc-4"],
       "points": [
@@ -76,7 +76,7 @@
       ]
     },
     {
-      "id": "u5-t5",
+      "id": "chem5-t5",
       "title": "氧化還原的定義",
       "codes": ["CJc-Vc-1"],
       "points": [
@@ -91,7 +91,7 @@
       ]
     },
     {
-      "id": "u5-t6",
+      "id": "chem5-t6",
       "title": "氧化劑、還原劑與金屬活性",
       "codes": ["CJc-Vc-2"],
       "points": [
@@ -109,7 +109,7 @@
       "exam_tips": ["金屬與鹽類水溶液反應題：比較金屬與溶液中金屬離子的活性，活性大的金屬才能置換。"]
     },
     {
-      "id": "u5-t7",
+      "id": "chem5-t7",
       "title": "電池",
       "codes": ["CJc-Vc-2", "CNc-Vc-1"],
       "points": [

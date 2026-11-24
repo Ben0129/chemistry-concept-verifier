@@ -19,15 +19,19 @@ const SHOTS = process.argv[2];
     await page.waitForTimeout(150);
     if (SHOTS && shot) await page.screenshot({ path: path.join(SHOTS, shot + ".png"), fullPage: false });
   };
-  const data = await (async () => { await page.goto(URL); return page.evaluate(() => window.CHEM_DATA); })();
+  const data = await (async () => { await page.goto(URL); return page.evaluate(() => window.SCI_DATA); })();
 
   await go("#/", "home");
   await go("#/kb", "kb");
   await go("#/kb?q=莫耳");
-  for (const u of data.knowledge) await go(`#/kb/${u.id}`, u.id === "u3" ? "kb-unit" : null);
-  for (const c of data.curriculum.codes) await go(`#/code/${encodeURIComponent(c.code)}`);
+  const units = data.subjects.flatMap((s) => s.knowledge);
+  const codes = data.subjects.flatMap((s) => s.curriculum.codes);
+  const files = data.subjects.flatMap((s) => s.questions);
+  for (const s of data.subjects) { await go(`#/kb?s=${s.id}`, `kb-${s.id}`); await go(`#/exam?s=${s.id}`); await go(`#/practice?s=${s.id}`); }
+  for (const u of units) await go(`#/kb/${u.id}`, u.id === "phys3" ? "kb-unit" : null);
+  for (const c of codes) await go(`#/code/${encodeURIComponent(c.code)}`);
 
-  const nQ = data.questions.reduce((a, f) => a + f.banks.reduce((b, k) => b + k.questions.length, 0), 0);
+  const nQ = files.reduce((a, f) => a + f.banks.reduce((b, k) => b + k.questions.length, 0), 0);
   if (nQ) {
     // 刷題：作答 5 題
     await go("#/practice", "practice-setup");
@@ -39,7 +43,7 @@ const SHOTS = process.argv[2];
       await page.click("#next");
     }
     // 每份單元試卷：作答後交卷
-    for (const f of data.questions) {
+    for (const f of files) {
       for (const b of f.banks) {
         await go(`#/exam/${f.unit_id}/${encodeURIComponent(b.key)}`);
         await page.waitForSelector("#submitExam");
@@ -61,7 +65,7 @@ const SHOTS = process.argv[2];
   }
   // 手機寬度
   await page.setViewportSize({ width: 390, height: 844 });
-  await go("#/kb/u4", "mobile-kb");
+  await go("#/kb/chem4", "mobile-kb");
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
   if (overflow) errors.push("手機寬度出現水平捲動");
 
@@ -70,5 +74,5 @@ const SHOTS = process.argv[2];
     console.error("失敗：\n" + errors.join("\n"));
     process.exit(1);
   }
-  console.log(`通過：知識庫 ${data.knowledge.length} 單元、${data.curriculum.codes.length} 個代碼頁、${nQ} 題選擇題`);
+  console.log(`通過：${data.subjects.length} 科、知識庫 ${units.length} 單元、${codes.length} 個代碼頁、${nQ} 題選擇題`);
 })();

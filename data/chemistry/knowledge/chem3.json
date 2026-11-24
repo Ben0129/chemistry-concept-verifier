@@ -1,12 +1,12 @@
 {
-  "id": "u3",
+  "id": "chem3",
   "order": 3,
   "title": "化學反應",
   "subunits": "U5 化學反應式、莫耳與計量、反應熱、反應速率",
   "summary": "用平衡的化學反應式描述反應，用「莫耳」連結質量、粒子數與係數，再用反應熱描述能量變化。這是所有計算題的基礎。",
   "topics": [
     {
-      "id": "u3-t1",
+      "id": "chem3-t1",
       "title": "質量守恆與化學反應式",
       "codes": ["CJa-Vc-1", "CJa-Vc-2"],
       "points": [
@@ -22,7 +22,7 @@
       ]
     },
     {
-      "id": "u3-t2",
+      "id": "chem3-t2",
       "title": "莫耳與莫耳質量",
       "codes": ["CJa-Vc-3"],
       "points": [
@@ -40,7 +40,7 @@
       ]
     },
     {
-      "id": "u3-t3",
+      "id": "chem3-t3",
       "title": "化學式與百分組成",
       "codes": ["CJa-Vc-3"],
       "points": [
@@ -57,7 +57,7 @@
       ]
     },
     {
-      "id": "u3-t4",
+      "id": "chem3-t4",
       "title": "化學計量與限量試劑",
       "codes": ["CJa-Vc-3"],
       "points": [
@@ -76,7 +76,7 @@
       "exam_tips": ["學測計算題常把反應式、原子量放在題幹，重點在單位換算不要出錯。"]
     },
     {
-      "id": "u3-t5",
+      "id": "chem3-t5",
       "title": "反應熱與能量守恆",
       "codes": ["CBa-Vc-1", "CBa-Vc-2"],
       "points": [
@@ -96,7 +96,7 @@
       ]
     },
     {
-      "id": "u3-t6",
+      "id": "chem3-t6",
       "title": "反應速率與接觸面積",
       "codes": ["CJe-Vc-2"],
       "points": [

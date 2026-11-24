@@ -1,12 +1,12 @@
 {
-  "id": "u7",
+  "id": "chem7",
   "order": 7,
   "title": "有機化學",
   "subunits": "U-有機：國中有機基礎、化學式、燃燒計量、結構閱讀",
   "summary": "必修化學沒有獨立的有機單元。學測以國中有機（烴、醇、酸、酯、聚合物）結合必修的化學式與計量出題；結構式、官能基、鍵線式則以「題幹給規則」的閱讀題出現。",
   "topics": [
     {
-      "id": "u7-t1",
+      "id": "chem7-t1",
       "title": "有機化合物",
       "codes": ["CJf-Vc-1", "CJa-Vc-3"],
       "points": [
@@ -16,7 +16,7 @@
       ]
     },
     {
-      "id": "u7-t2",
+      "id": "chem7-t2",
       "title": "烴類與化石燃料",
       "codes": ["CJa-Vc-2", "CNc-Vc-1"],
       "points": [
@@ -34,7 +34,7 @@
       ]
     },
     {
-      "id": "u7-t3",
+      "id": "chem7-t3",
       "title": "醇、有機酸與酯",
       "codes": ["CJf-Vc-1", "CJd-Vc-4"],
       "points": [
@@ -52,7 +52,7 @@
       ]
     },
     {
-      "id": "u7-t4",
+      "id": "chem7-t4",
       "title": "聚合物與塑膠",
       "codes": ["CJf-Vc-1", "CMa-Vc-1", "CNa-Vc-1"],
       "points": [
@@ -67,7 +67,7 @@
       ]
     },
     {
-      "id": "u7-t5",
+      "id": "chem7-t5",
       "title": "化學式與燃燒計量",
       "codes": ["CJa-Vc-2", "CJa-Vc-3"],
       "points": [
@@ -82,7 +82,7 @@
       ]
     },
     {
-      "id": "u7-t6",
+      "id": "chem7-t6",
       "title": "結構閱讀：官能基與鍵線式（選修下放）",
       "codes": ["CJf-Vc-1", "CMc-Vc-2"],
       "points": [

@@ -1,12 +1,12 @@
 {
-  "id": "u8",
+  "id": "chem8",
   "order": 8,
   "title": "物質三態與氣體",
   "subunits": "U3 三態變化、三相圖、氣體的基本性質",
   "summary": "以粒子觀點解釋三態與相變，學會讀三相圖；氣體部分掌握壓力單位、波以耳定律、查理定律與亞佛加厥定律。",
   "topics": [
     {
-      "id": "u8-t1",
+      "id": "chem8-t1",
       "title": "三態與相變",
       "codes": ["CAb-Vc-1", "CBa-Vc-1"],
       "points": [
@@ -20,7 +20,7 @@
       ]
     },
     {
-      "id": "u8-t2",
+      "id": "chem8-t2",
       "title": "三相圖",
       "codes": ["CAb-Vc-1"],
       "points": [
@@ -40,7 +40,7 @@
       ]
     },
     {
-      "id": "u8-t3",
+      "id": "chem8-t3",
       "title": "氣體的基本性質",
       "codes": ["CEc-Vc-1"],
       "points": [

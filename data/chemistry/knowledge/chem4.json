@@ -1,12 +1,12 @@
 {
-  "id": "u4",
+  "id": "chem4",
   "order": 4,
   "title": "溶液",
   "subunits": "U6 溶液的種類、濃度、溶解度與溶解平衡",
   "summary": "溶液的計算題是學測必考：重量百分濃度、ppm、體積莫耳濃度的換算，稀釋與混合，以及溶解度曲線與再結晶。",
   "topics": [
     {
-      "id": "u4-t1",
+      "id": "chem4-t1",
       "title": "溶液的種類與特性",
       "codes": ["CJb-Vc-1"],
       "points": [
@@ -21,7 +21,7 @@
       ]
     },
     {
-      "id": "u4-t2",
+      "id": "chem4-t2",
       "title": "濃度的表示法",
       "codes": ["CJb-Vc-3"],
       "points": [
@@ -44,7 +44,7 @@
       ]
     },
     {
-      "id": "u4-t3",
+      "id": "chem4-t3",
       "title": "稀釋與混合",
       "codes": ["CJb-Vc-3"],
       "points": [
@@ -62,7 +62,7 @@
       ]
     },
     {
-      "id": "u4-t4",
+      "id": "chem4-t4",
       "title": "溶解度與溶解度曲線",
       "codes": ["CJb-Vc-2"],
       "points": [
@@ -84,7 +84,7 @@
       "exam_tips": ["溶解度曲線題：注意縱軸單位是「g/100 g 水」，題目給的水量常不是 100 g。"]
     },
     {
-      "id": "u4-t5",
+      "id": "chem4-t5",
       "title": "溶解平衡",
       "codes": ["CJe-Vc-1"],
       "points": [
