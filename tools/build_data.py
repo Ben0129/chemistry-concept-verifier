@@ -32,7 +32,7 @@ def main():
     seen_units, seen_ids = set(), set()
     for sub in meta["subjects"]:
         d = os.path.join(DATA, sub["dir"])
-        if not os.path.isdir(d):
+        if not os.path.exists(os.path.join(d, "curriculum.json")):
             print(f"WARN  {sub['name']}：尚無資料夾 data/{sub['dir']}，略過")
             continue
         cur = load(os.path.join(d, "curriculum.json"))
