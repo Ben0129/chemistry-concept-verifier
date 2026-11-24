@@ -1,6 +1,7 @@
-"""檢查 data/questions/*.json 的格式、配分、難度配比與答案分布。
+"""檢查各科題庫（data/<科目>/questions/*.json）的格式、配分、難度配比與答案分布。
 
-用法：python3 tools/check_bank.py [questions.json ...]（不給參數則檢查全部）
+用法：python3 tools/check_bank.py [questions.json ...]（不給參數則檢查全部科目）
+選修關鍵字取自該科 curriculum.json 的 elective_keywords。
 ERROR 必須修正；WARN 請逐條判斷（例如選修關鍵字只要題幹已提供規則即可保留）。
 """
 import glob
@@ -16,10 +17,16 @@ PROFILE = {"E": {"single": 6, "multi": 10, "mixed": [10, 10, 10]},
            "H": {"single": 5, "multi": 10, "mixed": [4, 4, 12]}}
 # 每份題庫預設結構：(單選數, 多選數, 易, 中, 難)
 SHAPE = {"E": (10, 1, 8, 3, 0), "M": (6, 5, 2, 7, 2), "H": (6, 5, 0, 3, 8)}
-ELECTIVE = ["勒沙特列", "平衡常數", "K_{a}", "K_{b}", "氧化數", "混成軌域", "價殼層電子對", "依數", "蒸氣壓下降",
-            "沸點上升", "凝固點下降", "滲透壓", "速率定律", "反應級數", "活化能", "赫斯", "PV ＝ nRT", "分壓", "溶度積",
-            "緩衝溶液", "電動勢", "還原電位", "電解反應", "電鍍", "法拉第", "鍵線式", "官能基", "苯環", "鏡像", "產率",
-            "[H^{+}][OH^{−}]", "變色範圍", "同分異構", "量子數", "電子組態", "莫耳分率", "原子經濟"]
+ELECTIVE_CACHE = {}
+
+
+def elective_for(src):
+    d = os.path.dirname(os.path.dirname(os.path.abspath(src)))
+    if d not in ELECTIVE_CACHE:
+        p = os.path.join(d, "curriculum.json")
+        ELECTIVE_CACHE[d] = json.load(open(p, encoding="utf-8")).get("elective_keywords", []) if os.path.exists(p) else []
+    return ELECTIVE_CACHE[d]
+
 
 errors, warns = [], []
 
@@ -67,7 +74,7 @@ def check_file(src):
                 if s.count("{") != s.count("}"):
                     errors.append(f"{w}: 大括號不成對：{s[:40]}")
             text = q["stem"] + "".join(q["options"])
-            hits = [kw for kw in ELECTIVE if kw in text]
+            hits = [kw for kw in elective_for(src) if kw in text]
             if hits:
                 warns.append(f"{w}: 出現選修概念 {hits}，請確認判讀規則已寫在題幹")
             for o in q["options"]:
@@ -112,7 +119,7 @@ def check_file(src):
             warns.append(f"{tag}: 多選答案「{ma.most_common(1)[0][0]}」出現 {ma.most_common(1)[0][1]} 次")
 
 
-files = sys.argv[1:] or sorted(glob.glob(os.path.join(ROOT, "data", "questions", "*.json")))
+files = sys.argv[1:] or sorted(glob.glob(os.path.join(ROOT, "data", "*", "questions", "*.json")))
 for f in files:
     check_file(f)
 for m in errors:

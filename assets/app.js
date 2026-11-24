@@ -1,12 +1,13 @@
-/* 學測化學刷題站：單頁應用（不需框架、不需伺服器）
- * 資料來源：assets/data.js（由 tools/build_data.py 從 data/*.json 產生）
- * 路由：#/  #/kb  #/kb/<unit>[/<topic>]  #/code/<code>  #/practice  #/practice/run
- *       #/exam  #/exam/<unit>/<bankKey>  #/exam/mix  #/exam/run  #/review  #/stats
+/* 學測自然科統整複習：單頁應用（不需框架、不需伺服器）
+ * 資料來源：assets/data.js（由 tools/build_data.py 從 data/<科目>/*.json 產生）
+ * 路由：#/  #/kb[?s=科目&q=搜尋]  #/kb/<unit>[/<topic>]  #/code/<code>
+ *       #/practice[?s=|unit=|codes=]  #/practice/run
+ *       #/exam[?s=]  #/exam/<unit>/<bankKey>  #/exam/run  #/review  #/stats
  */
 (function () {
   "use strict";
 
-  const D = window.CHEM_DATA;
+  const D = window.SCI_DATA;
   const app = document.getElementById("app");
   const LETTERS = ["A", "B", "C", "D", "E"];
   const LEVELS = ["易", "中", "難"];
@@ -30,10 +31,14 @@
   const pct = (a, b) => (b ? Math.round((a / b) * 100) : 0);
 
   // ---------- 索引 ----------
-  const units = D.knowledge;
+  const SUBJECTS = D.subjects;
+  const subjectById = Object.fromEntries(SUBJECTS.map((s) => [s.id, s]));
+  const units = [];
+  SUBJECTS.forEach((s) => s.knowledge.forEach((u) => { u.subject = s.id; units.push(u); }));
   const unitById = Object.fromEntries(units.map((u) => [u.id, u]));
+  const unitsOf = (sid) => units.filter((u) => u.subject === sid);
   const codeInfo = {};
-  D.curriculum.codes.forEach((c) => (codeInfo[c.code] = { ...c, topics: [], questions: [], mixed: [] }));
+  SUBJECTS.forEach((s) => s.curriculum.codes.forEach((c) => (codeInfo[c.code] = { ...c, subject: s.id, official: s.curriculum.official !== false, topics: [], questions: [], mixed: [] })));
   const topicById = {};
   units.forEach((u) => u.topics.forEach((t) => {
     topicById[t.id] = { ...t, unit: u };
@@ -43,40 +48,48 @@
   const questions = []; // 選擇題
   const mixeds = []; // 混合題組
   const banks = []; // 每份題庫
-  D.questions.forEach((file) => {
+  SUBJECTS.forEach((s) => s.questions.forEach((file) => {
     file.banks.forEach((bank) => {
       const P = bank.points || BANK_PROFILE[bank.key[0]] || BANK_PROFILE.M;
       const singles = bank.questions.filter((q) => q.type === "單選");
       const multis = bank.questions.filter((q) => q.type === "多選");
-      const b = { unitId: file.unit_id, key: bank.key, name: bank.name, title: bank.title, P, singles, multis, mixed: bank.mixed || null };
-      banks.push(b);
+      banks.push({ subject: s.id, unitId: file.unit_id, key: bank.key, name: bank.name, title: bank.title, P, singles, multis, mixed: bank.mixed || null });
       [...singles, ...multis].forEach((q) => {
-        q.unitId = file.unit_id; q.bankKey = bank.key; q.bankName = bank.name;
-        q.codes = splitCodes(q.code);
+        Object.assign(q, { subject: s.id, unitId: file.unit_id, bankKey: bank.key, bankName: bank.name, codes: splitCodes(q.code) });
         questions.push(q);
         q.codes.forEach((c) => codeInfo[c] && codeInfo[c].questions.push(q));
       });
       if (bank.mixed) {
         const m = bank.mixed;
-        m.unitId = file.unit_id; m.bankKey = bank.key; m.bankName = bank.name; m.points = P.mixed;
-        m.codes = splitCodes(m.code);
+        Object.assign(m, { subject: s.id, unitId: file.unit_id, bankKey: bank.key, bankName: bank.name, points: P.mixed, codes: splitCodes(m.code) });
         mixeds.push(m);
         m.codes.forEach((c) => codeInfo[c] && codeInfo[c].mixed.push(m));
       }
     });
-  });
+  }));
   const qById = Object.fromEntries(questions.map((q) => [q.id, q]));
   const mixedById = Object.fromEntries(mixeds.map((m) => [m.id, m]));
-  const unitTitle = (id) => (unitById[id] ? `${unitById[id].order}. ${unitById[id].title}` : id);
+  const subjectsWithQ = SUBJECTS.filter((s) => questions.some((q) => q.subject === s.id));
 
   // ---------- 儲存 ----------
-  const STORE_KEY = "chem-gsat-v1";
+  const STORE_KEY = "sci-review-v1";
+  const EMPTY = () => ({ attempts: {}, exams: [], wrong: {}, star: {} });
+  function normalize(s) { return { attempts: s.attempts || {}, exams: s.exams || [], wrong: s.wrong || {}, star: s.star || {} }; }
   function loadStore() {
     try {
-      const s = JSON.parse(localStorage.getItem(STORE_KEY) || "{}");
-      return { attempts: s.attempts || {}, exams: s.exams || [], wrong: s.wrong || {}, star: s.star || {} };
+      const raw = localStorage.getItem(STORE_KEY);
+      if (raw) return normalize(JSON.parse(raw));
+      // 從舊版「學測化學刷題站」移轉紀錄：題號 u3-M04 → chem3-M04
+      const old = localStorage.getItem("chem-gsat-v1");
+      if (!old) return EMPTY();
+      const o = normalize(JSON.parse(old));
+      const re = (id) => id.replace(/^u([1-8])-/, "chem$1-");
+      const remap = (obj) => Object.fromEntries(Object.entries(obj).map(([k, v]) => [re(k), v]));
+      const moved = { attempts: remap(o.attempts), wrong: remap(o.wrong), star: remap(o.star), exams: o.exams.map((e) => ({ ...e, id: e.id.replace(/^u([1-8])\//, "chem$1/") })) };
+      localStorage.setItem(STORE_KEY, JSON.stringify(moved));
+      return moved;
     } catch (e) {
-      return { attempts: {}, exams: [], wrong: {}, star: {} };
+      return EMPTY();
     }
   }
   let store = loadStore();
@@ -108,7 +121,6 @@
     return [1, 0.6, 0.2][wrong] ?? 0;
   }
 
-  // ---------- 亂數 ----------
   function shuffle(arr) {
     const a = arr.slice();
     for (let i = a.length - 1; i > 0; i--) {
@@ -119,6 +131,7 @@
   }
 
   // ---------- 共用元件 ----------
+  const subjChip = (sid) => (subjectById[sid] ? `<span class="chip subj" style="--sc:${subjectById[sid].color}">${esc(subjectById[sid].name)}</span>` : "");
   const levelChip = (lv) => `<span class="chip lv-${lv}">${lv}</span>`;
   const codeChips = (codes) => codes.map((c) => `<a class="chip" href="#/code/${encodeURIComponent(c)}" title="${esc(codeInfo[c] ? codeInfo[c].text : "")}">${esc(c)}</a>`).join(" ");
   function dataTable(rows) {
@@ -133,7 +146,7 @@
     codes.forEach((c) => (codeInfo[c] ? codeInfo[c].topics : []).forEach((t) => {
       if (seen.has(t.id)) return;
       seen.add(t.id);
-      links.push(`<a href="#/kb/${t.unit.id}/${t.id}">${esc(t.unit.title)}：${esc(t.title)}</a>`);
+      links.push(`<a href="#/kb/${t.unit.id}/${t.id}">${esc(subjectById[t.unit.subject].name)}・${esc(t.unit.title)}：${esc(t.title)}</a>`);
     }));
     return links.length ? `<div class="small muted" style="margin-top:8px">相關知識點：${links.join("、")}</div>` : "";
   }
@@ -142,6 +155,13 @@
     qs.forEach((q) => { const a = store.attempts[q.id]; if (a) { done++; if (a.last === 1) correct++; } });
     return { done, correct, total: qs.length };
   }
+  // 科目分頁：base 為路由（如 "#/kb"），cur 為目前科目 id（空字串為全部）
+  function subjectTabs(base, cur, list) {
+    const items = [{ id: "", name: "全部" }, ...(list || SUBJECTS)];
+    return `<nav class="subj-tabs" aria-label="科目">${items.map((s) =>
+      `<a href="${base}${s.id ? "?s=" + s.id : ""}" class="${s.id === (cur || "") ? "active" : ""}" ${s.color ? `style="--sc:${s.color}"` : ""}>${esc(s.name)}</a>`).join("")}</nav>`;
+  }
+  const unitLabel = (u) => `${subjectById[u.subject].name}・${u.title}`;
 
   // ---------- 首頁 ----------
   function viewHome() {
@@ -150,8 +170,8 @@
     const nTopics = units.reduce((a, u) => a + u.topics.length, 0);
     app.innerHTML = `
       <section class="card hero">
-        <h1>學測化學刷題站</h1>
-        <p class="muted">依 108 課綱部定必修化學編寫。先讀知識庫建立觀念，再分單元刷題，最後用模擬試題檢驗。每一題都標註學習內容代碼，答錯可直接跳回相關知識點。</p>
+        <h1>${esc(D.title)}</h1>
+        <p class="muted">依 108 課綱部定必修物理、化學、生物、地球科學編寫，並附跨科統整與探究實作。先讀知識庫建立觀念，再分科刷題，最後用跨科模擬試題檢驗。每題都標註學習內容，答錯可直接跳回相關知識點。</p>
         <div class="row" style="margin-top:12px">
           <a class="btn primary" href="#/practice">開始刷題</a>
           <a class="btn" href="#/kb">讀知識庫</a>
@@ -163,18 +183,18 @@
         <div class="stat"><div class="num">${questions.length}</div><div class="lbl">選擇題</div></div>
         <div class="stat"><div class="num">${mixeds.length}</div><div class="lbl">混合題組</div></div>
         <div class="stat"><div class="num">${acc.done}</div><div class="lbl">已作答題數</div></div>
-        <div class="stat"><div class="num">${acc.done ? pct(acc.correct, acc.done) + "%" : "—"}</div><div class="lbl">最近一次作答正確率</div></div>
+        <div class="stat"><div class="num">${acc.done ? pct(acc.correct, acc.done) + "%" : "—"}</div><div class="lbl">正確率（最近一次作答）</div></div>
         <div class="stat"><div class="num">${wrongN}</div><div class="lbl">錯題本</div></div>
       </div>
-      <h2>單元</h2>
-      <div class="grid">${units.map((u) => {
-        const qs = questions.filter((q) => q.unitId === u.id), a = accuracyOf(qs);
-        return `<div class="card">
-          <div class="muted small">第 ${u.order} 單元・${esc(u.subunits.split("、")[0])}</div>
-          <h3 style="margin:2px 0 6px"><a href="#/kb/${u.id}">${esc(u.title)}</a></h3>
-          <div class="small muted">${u.topics.length} 個主題・${qs.length} 題</div>
+      <h2>科目</h2>
+      <div class="grid">${SUBJECTS.map((s) => {
+        const us = unitsOf(s.id), qs = questions.filter((q) => q.subject === s.id), a = accuracyOf(qs);
+        return `<div class="card subj-card" style="--sc:${s.color}">
+          <h3 style="margin:0 0 4px"><a href="#/kb?s=${s.id}">${esc(s.name)}</a></h3>
+          <div class="small muted">${us.length} 單元・${us.reduce((x, u) => x + u.topics.length, 0)} 主題・${qs.length} 題</div>
           <div class="progress-mini" style="margin:8px 0" title="已作答 ${a.done}/${a.total}"><span style="width:${pct(a.done, a.total)}%"></span></div>
-          <div class="row"><a class="btn sm" href="#/kb/${u.id}">知識</a>${qs.length ? `<a class="btn sm" href="#/practice?unit=${u.id}">刷題</a>` : ""}</div>
+          <ul class="small" style="padding-left:1.2em;margin:4px 0 10px">${us.map((u) => `<li><a href="#/kb/${u.id}">${esc(u.title)}</a></li>`).join("")}</ul>
+          <div class="row"><a class="btn sm" href="#/kb?s=${s.id}">知識庫</a>${qs.length ? `<a class="btn sm" href="#/practice?s=${s.id}">刷題</a><a class="btn sm" href="#/exam?s=${s.id}">試卷</a>` : ""}</div>
         </div>`;
       }).join("")}</div>`;
   }
@@ -198,54 +218,62 @@
   }
   function highlight(html, query) {
     const q = esc(query).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    // 只替換標籤外的文字
     return html.replace(/(^|>)([^<]+)/g, (m, p, text) => p + text.replace(new RegExp(q, "g"), (x) => `<mark>${x}</mark>`));
   }
   function topicText(t) {
     return plain([t.title, ...t.points, ...(t.exam_tips || []), ...(t.misconceptions || []).flatMap((m) => [m.wrong, m.right]),
       ...(t.formulas || []).flatMap((f) => [f.name, f.expr]), ...(t.table || []).flat(), ...t.codes].join(" "));
   }
-  function viewKbIndex(query) {
-    query = (query || "").trim();
-    let results = "";
+  function viewKbIndex(params) {
+    const sid = subjectById[params.s] ? params.s : "";
+    const query = (params.q || "").trim();
+    const shown = sid ? [subjectById[sid]] : SUBJECTS;
+    let body;
     if (query) {
-      const hits = Object.values(topicById).filter((t) => topicText(t).includes(query));
-      results = `<h2>搜尋「${esc(query)}」：${hits.length} 個主題</h2>` +
-        (hits.length ? hits.map((t) => `<div class="muted small">${esc(t.unit.title)}</div>${topicHtml(t, query)}`).join("") : `<div class="empty">找不到相關內容，試試其他關鍵字（例如：莫耳、pH、萃取）。</div>`);
+      const hits = Object.values(topicById).filter((t) => (!sid || t.unit.subject === sid) && topicText(t).includes(query));
+      body = `<h2>搜尋「${esc(query)}」：${hits.length} 個主題</h2>` +
+        (hits.length ? hits.map((t) => `<div class="muted small">${esc(unitLabel(t.unit))}</div>${topicHtml(t, query)}`).join("") : `<div class="empty">找不到相關內容，試試其他關鍵字（例如：加速度、莫耳、DNA、板塊）。</div>`);
+    } else {
+      body = shown.map((s) => `
+        <h2 class="subj-head" style="--sc:${s.color}">${esc(s.name)}</h2>
+        <div class="grid">${unitsOf(s.id).map((u) => `<div class="card">
+          <div class="muted small">第 ${u.order} 單元</div>
+          <h3 style="margin:2px 0 6px"><a href="#/kb/${u.id}">${esc(u.title)}</a></h3>
+          <p class="small muted">${md(u.summary)}</p>
+          <ul class="small" style="padding-left:1.2em;margin:6px 0 0">${u.topics.map((t) => `<li><a href="#/kb/${u.id}/${t.id}">${esc(t.title)}</a></li>`).join("")}</ul>
+        </div>`).join("")}</div>`).join("") +
+        (sid ? `<h2>學習內容總覽</h2><div class="card">${codeIndexHtml(subjectById[sid])}</div>
+          ${subjectById[sid].curriculum.not_tested ? `<h2>學測不考（選修）</h2><div class="card small"><ul style="padding-left:1.2em;margin:0">${subjectById[sid].curriculum.not_tested.map((x) => `<li>${md(x)}</li>`).join("")}</ul></div>` : ""}`
+          : `<p class="small muted" style="margin-top:20px">選擇上方的科目，可看到該科的學習內容總覽與「學測不考」清單。</p>`);
     }
     app.innerHTML = `
       <h1>知識庫</h1>
-      <p class="muted">依單元整理的重點、公式、常見迷思與學測考點。點學習內容代碼可看到該條目的所有知識點與題目。</p>
-      <div class="card"><input type="search" id="kbSearch" placeholder="搜尋知識點，例如：限量試劑、R_f、酸雨" value="${esc(query)}" aria-label="搜尋知識庫"></div>
-      ${results || `
-      <div class="grid">${units.map((u) => `<div class="card">
-        <div class="muted small">第 ${u.order} 單元</div>
-        <h3 style="margin:2px 0 6px"><a href="#/kb/${u.id}">${esc(u.title)}</a></h3>
-        <p class="small muted">${md(u.summary)}</p>
-        <ul class="small" style="padding-left:1.2em;margin:6px 0 0">${u.topics.map((t) => `<li><a href="#/kb/${u.id}/${t.id}">${esc(t.title)}</a></li>`).join("")}</ul>
-      </div>`).join("")}</div>
-      <h2>學習內容代碼總覽</h2>
-      <div class="card">${codeIndexHtml()}</div>
-      <h2>學測不考（選修）</h2>
-      <div class="card small"><ul style="padding-left:1.2em;margin:0">${D.curriculum.not_tested.map((x) => `<li>${md(x)}</li>`).join("")}</ul>
-      <p class="muted">${md(D.curriculum.note)}</p></div>`}`;
+      <p class="muted">依科目與單元整理的重點、公式、常見迷思與學測考點。</p>
+      ${subjectTabs("#/kb", sid)}
+      <div class="card"><input type="search" id="kbSearch" placeholder="搜尋${sid ? subjectById[sid].name : "全部科目"}的知識點" value="${esc(query)}" aria-label="搜尋知識庫"></div>
+      ${body}`;
     const input = document.getElementById("kbSearch");
     let timer;
     input.addEventListener("input", () => {
       clearTimeout(timer);
       timer = setTimeout(() => {
-        history.replaceState(null, "", "#/kb" + (input.value.trim() ? "?q=" + encodeURIComponent(input.value.trim()) : ""));
-        viewKbIndex(input.value);
+        const q = input.value.trim();
+        const qs = [sid && "s=" + sid, q && "q=" + encodeURIComponent(q)].filter(Boolean).join("&");
+        history.replaceState(null, "", "#/kb" + (qs ? "?" + qs : ""));
+        viewKbIndex({ s: sid, q: input.value });
         const el = document.getElementById("kbSearch");
         el.focus();
         el.setSelectionRange(el.value.length, el.value.length);
       }, 250);
     });
   }
-  function codeIndexHtml() {
-    return D.curriculum.themes.map((th) => {
-      const cs = D.curriculum.codes.filter((c) => c.theme === th.id);
-      return `<h3 style="margin-top:12px">${esc(th.name)}</h3>
+  function codeIndexHtml(s) {
+    const cur = s.curriculum;
+    const note = cur.official === false ? `<p class="small muted">${md(cur.note || "")}</p>` : `<p class="small muted">${md(cur.note || "")}</p>`;
+    return note + (cur.themes || [{ id: null, name: "" }]).map((th) => {
+      const cs = cur.codes.filter((c) => !th.id || c.theme === th.id);
+      if (!cs.length) return "";
+      return `${th.name ? `<h3 style="margin-top:12px">${esc(th.name)}</h3>` : ""}
         <table class="list"><tbody>${cs.map((c) => {
           const info = codeInfo[c.code];
           return `<tr><td style="width:110px"><a href="#/code/${encodeURIComponent(c.code)}">${c.code}</a></td><td>${md(c.text)}</td>
@@ -256,20 +284,21 @@
   function viewKbUnit(uid, tid) {
     const u = unitById[uid];
     if (!u) return notFound();
+    const s = subjectById[u.subject], sibs = unitsOf(u.subject), i = sibs.indexOf(u);
     const qs = questions.filter((q) => q.unitId === uid);
     app.innerHTML = `
-      <div class="small"><a href="#/kb">知識庫</a> ／ 第 ${u.order} 單元</div>
+      <div class="small"><a href="#/kb">知識庫</a> ／ <a href="#/kb?s=${s.id}">${esc(s.name)}</a> ／ 第 ${u.order} 單元</div>
       <h1>${esc(u.title)}</h1>
-      <p class="muted">${esc(u.subunits)}</p>
+      <p class="muted">${esc(u.subunits || "")}</p>
       <p>${md(u.summary)}</p>
       <div class="row" style="margin-bottom:16px">
-        ${qs.length ? `<a class="btn primary" href="#/practice?unit=${uid}">刷本單元 ${qs.length} 題</a><a class="btn" href="#/exam">本單元模擬試題</a>` : `<span class="muted small">本單元題庫建置中。</span>`}
+        ${qs.length ? `<a class="btn primary" href="#/practice?unit=${uid}">刷本單元 ${qs.length} 題</a><a class="btn" href="#/exam?s=${s.id}">${esc(s.name)}試卷</a>` : `<span class="muted small">本單元題庫建置中。</span>`}
       </div>
       <div class="kb-layout">
-        <nav class="toc card" aria-label="主題目錄">${u.topics.map((t, i) => `<a href="#/kb/${uid}/${t.id}">${i + 1}. ${esc(t.title)}</a>`).join("")}</nav>
+        <nav class="toc card" aria-label="主題目錄">${u.topics.map((t, k) => `<a href="#/kb/${uid}/${t.id}">${k + 1}. ${esc(t.title)}</a>`).join("")}</nav>
         <div>${u.topics.map((t) => topicHtml(topicById[t.id])).join("")}
-          <div class="row">${u.order > 1 ? `<a class="btn" href="#/kb/${units[u.order - 2].id}">← ${esc(units[u.order - 2].title)}</a>` : ""}<span class="spacer"></span>
-          ${units[u.order] ? `<a class="btn" href="#/kb/${units[u.order].id}">${esc(units[u.order].title)} →</a>` : ""}</div>
+          <div class="row">${i > 0 ? `<a class="btn" href="#/kb/${sibs[i - 1].id}">← ${esc(sibs[i - 1].title)}</a>` : ""}<span class="spacer"></span>
+          ${sibs[i + 1] ? `<a class="btn" href="#/kb/${sibs[i + 1].id}">${esc(sibs[i + 1].title)} →</a>` : ""}</div>
         </div>
       </div>`;
     if (tid) {
@@ -280,17 +309,18 @@
   function viewCode(code) {
     const info = codeInfo[code];
     if (!info) return notFound();
-    const all = info.questions;
-    const a = accuracyOf(all);
+    const s = subjectById[info.subject];
+    const a = accuracyOf(info.questions);
     app.innerHTML = `
-      <div class="small"><a href="#/kb">知識庫</a> ／ 學習內容</div>
+      <div class="small"><a href="#/kb">知識庫</a> ／ <a href="#/kb?s=${s.id}">${esc(s.name)}</a> ／ 學習內容</div>
       <h1>${esc(code)}</h1>
       <p>${md(info.text)}</p>
+      ${info.official ? "" : `<p class="small muted">此為本站依課綱主題整理的條目代碼，非課綱官方代碼。</p>`}
       <div class="row" style="margin-bottom:12px">
-        ${all.length ? `<a class="btn primary" href="#/practice?codes=${encodeURIComponent(code)}">練習相關的 ${all.length} 題</a>` : ""}
-        <span class="muted small">${all.length ? `已作答 ${a.done} 題，正確 ${a.correct} 題` : "尚無相關選擇題"}${info.mixed.length ? `；另有 ${info.mixed.length} 組混合題` : ""}</span>
+        ${info.questions.length ? `<a class="btn primary" href="#/practice?codes=${encodeURIComponent(code)}">練習相關的 ${info.questions.length} 題</a>` : ""}
+        <span class="muted small">${info.questions.length ? `已作答 ${a.done} 題，正確 ${a.correct} 題` : "尚無相關選擇題"}${info.mixed.length ? `；另有 ${info.mixed.length} 組混合題` : ""}</span>
       </div>
-      ${info.topics.map((t) => `<div class="muted small">${esc(t.unit.title)}</div>${topicHtml(t)}`).join("") || `<div class="empty">尚無知識點。</div>`}`;
+      ${info.topics.map((t) => `<div class="muted small">${esc(unitLabel(t.unit))}</div>${topicHtml(t)}`).join("") || `<div class="empty">尚無知識點。</div>`}`;
   }
 
   // ---------- 刷題 ----------
@@ -303,7 +333,6 @@
     return out;
   }
   function viewPracticeSetup(params) {
-    const pre = params.unit ? [params.unit] : null;
     const codes = params.codes ? params.codes.split(",") : null;
     if (codes) {
       const pool = questions.filter((q) => q.codes.some((c) => codes.includes(c)));
@@ -314,14 +343,19 @@
       app.innerHTML = `<h1>刷題練習</h1><div class="empty card">題庫建置中，請先閱讀<a href="#/kb">知識庫</a>。</div>`;
       return;
     }
+    const isOn = (u) => (params.unit ? u.id === params.unit : params.s ? u.subject === params.s : true);
     app.innerHTML = `
       <h1>刷題練習</h1>
       <p class="muted">一次一題，作答後立即顯示答案與詳解。多選題依學測規則計分：錯 1 個選項得 60%，錯 2 個得 20%。</p>
       <form class="card" id="pf">
         <fieldset><legend>單元</legend>
-          ${unitsWithQ.map((u) => `<label class="check"><input type="checkbox" name="unit" value="${u.id}" ${!pre || pre.includes(u.id) ? "checked" : ""}> ${esc(u.title)}
-            <span class="muted small">（${questions.filter((q) => q.unitId === u.id).length}）</span></label>`).join("")}
-          <div><button type="button" class="btn sm" data-all="unit">全選</button> <button type="button" class="btn sm" data-none="unit">全不選</button></div>
+          ${subjectsWithQ.map((s) => `<div class="unit-group">
+            <div class="row"><strong class="subj-name" style="--sc:${s.color}">${esc(s.name)}</strong>
+              <button type="button" class="btn sm" data-subj="${s.id}" data-on="1">全選</button><button type="button" class="btn sm" data-subj="${s.id}" data-on="0">清除</button></div>
+            ${unitsWithQ.filter((u) => u.subject === s.id).map((u) => `<label class="check"><input type="checkbox" name="unit" value="${u.id}" data-s="${s.id}" ${isOn(u) ? "checked" : ""}> ${esc(u.title)}
+              <span class="muted small">（${questions.filter((q) => q.unitId === u.id).length}）</span></label>`).join("")}
+          </div>`).join("")}
+          <div style="margin-top:6px"><button type="button" class="btn sm" data-all="1">全部科目全選</button> <button type="button" class="btn sm" data-all="0">全部清除</button></div>
         </fieldset>
         <fieldset><legend>難度</legend>
           ${LEVELS.map((l) => `<label class="check"><input type="checkbox" name="level" value="${l}" checked> ${l}</label>`).join("")}
@@ -351,8 +385,11 @@
     const info = () => { document.getElementById("poolInfo").textContent = `符合條件：${pick().length} 題`; };
     form.addEventListener("change", info);
     form.addEventListener("click", (e) => {
-      const all = e.target.getAttribute("data-all"), none = e.target.getAttribute("data-none");
-      if (all || none) { form.querySelectorAll(`input[name="${all || none}"]`).forEach((i) => (i.checked = !!all)); info(); }
+      const t = e.target;
+      if (t.dataset.subj) form.querySelectorAll(`input[name="unit"][data-s="${t.dataset.subj}"]`).forEach((i) => (i.checked = t.dataset.on === "1"));
+      else if (t.dataset.all) form.querySelectorAll('input[name="unit"]').forEach((i) => (i.checked = t.dataset.all === "1"));
+      else return;
+      info();
     });
     form.addEventListener("submit", (e) => {
       e.preventDefault();
@@ -419,7 +456,7 @@
   function questionHtml(q, picked, reveal, o) {
     const pickedSet = picked instanceof Set ? picked : new Set(picked || []);
     return `<div class="q-head">
-        <span class="chip">${q.type}</span>${levelChip(q.level)}<span class="chip">${esc(unitById[q.unitId] ? unitById[q.unitId].title : q.unitId)}</span>
+        ${subjChip(q.subject)}<span class="chip">${q.type}</span>${levelChip(q.level)}<span class="chip">${esc(unitById[q.unitId] ? unitById[q.unitId].title : q.unitId)}</span>
         ${codeChips(q.codes)}<span class="muted small">${esc(q.id)}</span>
       </div>
       <div class="q-stem">${o.num ? `<span class="q-num">${o.num}.</span>` : ""}${md(q.stem)}</div>
@@ -433,9 +470,9 @@
           <span class="lt">${L}</span><span>${md(op)}</span></button>`;
       }).join("")}</div>`;
   }
-  function bindOptions(q, picked, interactive, onChange, root) {
+  function bindOptions(q, picked, interactive, onChange) {
     if (!interactive) return;
-    (root || app).querySelectorAll(`.opts[data-q="${CSS.escape(q.id)}"] .opt`).forEach((btn) => {
+    app.querySelectorAll(`.opts[data-q="${CSS.escape(q.id)}"] .opt`).forEach((btn) => {
       btn.addEventListener("click", () => {
         const L = btn.dataset.l;
         if (q.type === "單選") { picked.clear(); picked.add(L); }
@@ -459,7 +496,7 @@
     </div>`;
   }
   function practiceSummary(s) {
-    const ids = s.ids.filter((id) => s.scores[id] !== undefined);
+    const ids = s.ids.filter((id) => s.scores[id] !== undefined && qById[id]);
     const got = ids.reduce((a, id) => a + s.scores[id], 0);
     const wrong = ids.filter((id) => s.scores[id] < 1);
     const byCode = {};
@@ -470,7 +507,7 @@
       <div class="card">
         <div class="score-big">${pct(got, ids.length)}%</div>
         <div class="muted">${esc(s.title)}・共 ${ids.length} 題，全對 ${ids.length - wrong.length} 題</div>
-        ${weak.length ? `<h3 style="margin-top:14px">建議複習</h3><ul>${weak.map(([c, n]) => `<li><a href="#/code/${encodeURIComponent(c)}">${c}</a>：${md(codeInfo[c] ? codeInfo[c].text : "")}（錯 ${n} 題）</li>`).join("")}</ul>` : ""}
+        ${weak.length ? `<h3 style="margin-top:14px">建議複習</h3><ul>${weak.map(([c, n]) => `<li>${codeInfo[c] ? subjChip(codeInfo[c].subject) : ""} <a href="#/code/${encodeURIComponent(c)}">${c}</a>：${md(codeInfo[c] ? codeInfo[c].text : "")}（錯 ${n} 題）</li>`).join("")}</ul>` : ""}
         <div class="row" style="margin-top:12px">
           ${wrong.length ? `<button class="btn primary" id="redo">重做這次的錯題（${wrong.length}）</button>` : ""}
           <a class="btn" href="#/practice">再練一組</a><a class="btn" href="#/review">錯題本</a>
@@ -484,17 +521,18 @@
   }
 
   // ---------- 模擬試題 ----------
-  function viewExamList() {
+  function viewExamList(params) {
+    const sid = subjectById[params.s] ? params.s : "";
     const bestOf = (id) => store.exams.filter((e) => e.id === id).reduce((m, e) => Math.max(m, pct(e.score, e.max)), -1);
-    const byUnit = units.map((u) => ({ u, bs: banks.filter((b) => b.unitId === u.id) })).filter((x) => x.bs.length);
+    const shown = (sid ? [subjectById[sid]] : SUBJECTS).filter((s) => banks.some((b) => b.subject === s.id));
     app.innerHTML = `
       <h1>模擬試題</h1>
-      <p class="muted">每份單元試卷比照學測題型：單選、多選與混合題（非選擇題）組成，滿分 100 分。混合題交卷後對照參考答案與評分規準自評。</p>
+      <p class="muted">每份試卷比照學測題型：單選、多選與混合題（非選擇題），滿分 100 分。混合題交卷後對照參考答案與評分規準自評。</p>
       <section class="card">
         <h2 style="margin-top:0">綜合模擬卷</h2>
-        <p class="small muted">從所選單元隨機抽題組卷，模擬學測化學部分的跨單元作答。</p>
+        <p class="small muted">從所選科目隨機抽題組卷，題目平均分配到各科，模擬學測自然的跨科作答。</p>
         <form id="mixf">
-          <fieldset><legend>範圍</legend>${byUnit.map(({ u }) => `<label class="check"><input type="checkbox" name="unit" value="${u.id}" checked> ${esc(u.title)}</label>`).join("")}</fieldset>
+          <fieldset><legend>科目</legend>${subjectsWithQ.map((s) => `<label class="check"><input type="checkbox" name="subj" value="${s.id}" ${!sid || sid === s.id ? "checked" : ""}> ${esc(s.name)}</label>`).join("")}</fieldset>
           <fieldset><legend>難度</legend>
             <label class="check"><input type="radio" name="mode" value="basic"> 基礎（易題為主）</label>
             <label class="check"><input type="radio" name="mode" value="std" checked> 標準（接近學測）</label>
@@ -503,19 +541,21 @@
           <div class="row"><button class="btn primary" type="submit">產生試卷（10 單選＋5 多選＋1 混合題組，滿分 100）</button></div>
         </form>
       </section>
-      <h2>單元試卷</h2>
-      ${byUnit.length ? `<div class="grid">${byUnit.map(({ u, bs }) => `<div class="card">
-        <div class="muted small">第 ${u.order} 單元</div><h3 style="margin:2px 0">${esc(u.title)}</h3>
-        <div class="bank-cell">${bs.map((b) => { const best = bestOf(`${u.id}/${b.key}`); return `<a class="btn sm" href="#/exam/${u.id}/${encodeURIComponent(b.key)}">${esc(b.name)}卷${best >= 0 ? `<span class="muted">（${best}）</span>` : ""}</a>`; }).join("")}</div>
-      </div>`).join("")}</div>` : `<div class="empty card">題庫建置中。</div>`}
+      <h2>分科單元試卷</h2>
+      ${subjectTabs("#/exam", sid, SUBJECTS.filter((s) => banks.some((b) => b.subject === s.id)))}
+      ${shown.length ? shown.map((s) => `<h3 class="subj-head" style="--sc:${s.color}">${esc(s.name)}</h3>
+        <div class="grid">${unitsOf(s.id).filter((u) => banks.some((b) => b.unitId === u.id)).map((u) => `<div class="card">
+          <div class="muted small">第 ${u.order} 單元</div><h3 style="margin:2px 0">${esc(u.title)}</h3>
+          <div class="bank-cell">${banks.filter((b) => b.unitId === u.id).map((b) => { const best = bestOf(`${u.id}/${b.key}`); return `<a class="btn sm" href="#/exam/${u.id}/${encodeURIComponent(b.key)}">${esc(b.name)}卷${best >= 0 ? `<span class="muted">（${best}）</span>` : ""}</a>`; }).join("")}</div>
+        </div>`).join("")}</div>`).join("") : `<div class="empty card">題庫建置中。</div>`}
       ${store.exams.length ? `<h2>最近的考試紀錄</h2><div class="card">${examHistoryHtml(8)}</div>` : ""}`;
     const f = document.getElementById("mixf");
     f.addEventListener("submit", (e) => {
       e.preventDefault();
       const fd = new FormData(f);
-      const us = fd.getAll("unit");
-      if (!us.length) return;
-      buildMixExam(us, fd.get("mode"));
+      const ss = fd.getAll("subj");
+      if (!ss.length) return;
+      buildMixExam(ss, fd.get("mode"));
     });
   }
   function examHistoryHtml(n) {
@@ -528,43 +568,45 @@
     if (!b) return notFound();
     const cur = sessionGet("exam");
     if (cur && cur.id === `${uid}/${key}` && !cur.submitted) { location.replace("#/exam/run"); return; }
-    const items = [
-      ...b.singles.map((q) => ({ id: q.id, pts: b.P.single })),
-      ...b.multis.map((q) => ({ id: q.id, pts: b.P.multi })),
-    ];
-    const exam = { id: `${uid}/${key}`, title: `${unitById[uid].title}（${b.name}）`, items, mixed: b.mixed ? [b.mixed.id] : [],
+    const items = [...b.singles.map((q) => ({ id: q.id, pts: b.P.single })), ...b.multis.map((q) => ({ id: q.id, pts: b.P.multi }))];
+    const exam = { id: `${uid}/${key}`, title: `${unitLabel(unitById[uid])}（${b.name}）`, items, mixed: b.mixed ? [b.mixed.id] : [],
       minutes: 50, start: Date.now(), answers: {}, mixedText: {}, submitted: false };
     sessionSet("exam", exam);
     location.replace("#/exam/run");
   }
-  function buildMixExam(us, mode) {
+  function buildMixExam(ss, mode) {
     const weights = { basic: { 易: 0.6, 中: 0.35, 難: 0.05 }, std: { 易: 0.3, 中: 0.5, 難: 0.2 }, hard: { 易: 0.1, 中: 0.45, 難: 0.45 } }[mode] || { 易: 0.3, 中: 0.5, 難: 0.2 };
-    const pool = questions.filter((q) => us.includes(q.unitId));
+    const pickLevel = () => { let r = Math.random(); for (const l of LEVELS) { if (r < weights[l]) return l; r -= weights[l]; } return "中"; };
+    // 每科每種難度一個洗好的題目堆，輪流從各科抽，讓題目平均分配到各科
+    const piles = {};
+    ss.forEach((s) => LEVELS.forEach((l) => ["單選", "多選"].forEach((t) => (piles[`${s}|${t}|${l}`] = shuffle(questions.filter((q) => q.subject === s && q.type === t && q.level === l))))));
     const drawType = (type, n) => {
-      const out = [];
-      const byLv = {};
-      LEVELS.forEach((l) => (byLv[l] = shuffle(pool.filter((q) => q.type === type && q.level === l))));
-      // 依權重決定每題難度，該難度沒題目時從其他難度補
+      const out = [], order = shuffle(ss);
       for (let i = 0; i < n; i++) {
-        let r = Math.random(), lv = "中";
-        for (const l of LEVELS) { if (r < weights[l]) { lv = l; break; } r -= weights[l]; }
-        const order = [lv, ...LEVELS.filter((l) => l !== lv)];
-        const from = order.find((l) => byLv[l].length);
-        if (!from) break;
-        out.push(byLv[from].pop());
+        const lv = pickLevel();
+        const tries = [];
+        for (let k = 0; k < order.length; k++) {
+          const s = order[(i + k) % order.length];
+          tries.push(...[lv, ...LEVELS.filter((l) => l !== lv)].map((l) => `${s}|${type}|${l}`));
+        }
+        const key = tries.find((k) => piles[k].length);
+        if (!key) break;
+        out.push(piles[key].pop());
       }
-      // 盡量讓單元分散：依單元順序排列
-      return out.sort((a, b) => unitById[a.unitId].order - unitById[b.unitId].order);
+      const sOrder = SUBJECTS.map((s) => s.id);
+      return out.sort((a, b) => sOrder.indexOf(a.subject) - sOrder.indexOf(b.subject) || unitById[a.unitId].order - unitById[b.unitId].order);
     };
-    // 配分：單選 10 題 × 4 分；混合題保留原配分（易 30、中難 20）；多選 5 題平分剩下的分數，使總分為 100
+    // 配分：單選 10 題 × 4 分；混合題保留原配分；多選 5 題平分剩下的分數，使總分為 100
     const singles = drawType("單選", 10), multis = drawType("多選", 5);
-    const mxPool = mixeds.filter((m) => us.includes(m.unitId));
-    const prefer = mxPool.filter((m) => (mode === "basic" ? m.level === "易" : mode === "hard" ? m.level === "難" : m.level === "中"));
+    const mxPool = mixeds.filter((m) => ss.includes(m.subject));
+    const want = mode === "basic" ? "易" : mode === "hard" ? "難" : "中";
+    const prefer = mxPool.filter((m) => m.level === want);
     const mx = shuffle(prefer.length ? prefer : mxPool)[0];
     const mxTotal = mx ? mx.points.reduce((a, b) => a + b, 0) : 0;
     const multiPts = multis.length ? (100 - 4 * singles.length - mxTotal) / multis.length : 0;
     const items = [...singles.map((q) => ({ id: q.id, pts: 4 })), ...multis.map((q) => ({ id: q.id, pts: multiPts }))];
-    const exam = { id: "mix", title: `綜合模擬卷（${{ basic: "基礎", std: "標準", hard: "挑戰" }[mode]}）`, items, mixed: mx ? [mx.id] : [],
+    const names = ss.map((s) => subjectById[s].name).join("・");
+    const exam = { id: "mix", title: `綜合模擬卷（${names}／${{ basic: "基礎", std: "標準", hard: "挑戰" }[mode]}）`, items, mixed: mx ? [mx.id] : [],
       minutes: 60, start: Date.now(), answers: {}, mixedText: {}, submitted: false };
     sessionSet("exam", exam);
     location.hash = "#/exam/run";
@@ -593,7 +635,7 @@
     const multisHtml = multis.map(qBlock).join("");
     let mixedHtml = "";
     mxs.forEach((m) => {
-      mixedHtml += `<div class="exam-q"><div class="q-head">${levelChip(m.level)}${codeChips(m.codes)}<span class="muted small">${esc(m.id)}</span></div>
+      mixedHtml += `<div class="exam-q"><div class="q-head">${subjChip(m.subject)}${levelChip(m.level)}${codeChips(m.codes)}<span class="muted small">${esc(m.id)}</span></div>
         <h3>${md(m.title.replace("混合題：", ""))}</h3><p>${md(m.intro)}</p>${qImage(m)}${dataTable(m.table)}
         ${m.parts.map((p, i) => {
           n++;
@@ -608,7 +650,8 @@
           </div>`;
         }).join("")}</div>`;
     });
-    const auto = ex.items.reduce((a, it) => a + (qById[it.id] ? grade(qById[it.id], ex.answers[it.id]) * it.pts : 0), 0);
+    const autoScore = () => ex.items.reduce((a, it) => a + (qById[it.id] ? grade(qById[it.id], ex.answers[it.id]) * it.pts : 0), 0);
+    const auto = autoScore();
     const selfSum = Object.values(ex.selfScore || {}).reduce((a, b) => a + (+b || 0), 0);
     const max = ex.items.reduce((a, it) => a + it.pts, 0) + mixedTotal;
     const singlePts = singles[0] ? singles[0].pts : 0, multiPts = multis[0] ? multis[0].pts : 0;
@@ -639,17 +682,15 @@
         ${S ? "" : `<span class="timer" id="timer"></span><button class="btn primary" id="submitExam">交卷</button>`}
       </div>`;
 
-    // 作答綁定
     if (!S) {
-      ex.items.forEach((it) => {
+      ex.items.forEach((it, idx) => {
         const q = qById[it.id];
         if (!q) return;
         const picked = new Set(ex.answers[q.id] || []);
         bindOptions(q, picked, true, () => {
           ex.answers[q.id] = [...picked].sort();
           sessionSet("exam", ex);
-          const idx = ex.items.indexOf(it) + 1;
-          const a = app.querySelector(`.sheet a[data-jump="${idx}"]`);
+          const a = app.querySelector(`.sheet a[data-jump="${idx + 1}"]`);
           if (a) a.classList.toggle("done", picked.size > 0);
         });
       });
@@ -672,8 +713,7 @@
         ex.end = Date.now();
         ex.selfScore = {};
         ex.items.forEach((it) => qById[it.id] && recordAttempt(qById[it.id], grade(qById[it.id], ex.answers[it.id])));
-        const sc = ex.items.reduce((a, it) => a + grade(qById[it.id], ex.answers[it.id]) * it.pts, 0);
-        store.exams.push({ id: ex.id, title: ex.title, score: +sc.toFixed(1), max, date: ex.end, sec: Math.round((ex.end - ex.start) / 1000) });
+        store.exams.push({ id: ex.id, title: ex.title, score: +autoScore().toFixed(1), max, date: ex.end, sec: Math.round((ex.end - ex.start) / 1000) });
         ex.historyIndex = store.exams.length - 1;
         save();
         sessionSet("exam", ex);
@@ -683,11 +723,9 @@
       });
     } else {
       app.querySelectorAll("input[data-self]").forEach((inp) => inp.addEventListener("change", () => {
-        const mx = +inp.max;
-        let v = Math.max(0, Math.min(mx, Math.round(+inp.value || 0)));
-        inp.value = v;
+        const v = Math.max(0, Math.min(+inp.max, Math.round(+inp.value || 0)));
         ex.selfScore[inp.dataset.self] = v;
-        const total = ex.items.reduce((a, it) => a + grade(qById[it.id], ex.answers[it.id]) * it.pts, 0) + Object.values(ex.selfScore).reduce((a, b) => a + b, 0);
+        const total = autoScore() + Object.values(ex.selfScore).reduce((a, b) => a + b, 0);
         if (store.exams[ex.historyIndex]) { store.exams[ex.historyIndex].score = +total.toFixed(1); save(); }
         sessionSet("exam", ex);
         viewExamRun();
@@ -712,7 +750,7 @@
     const wrongIds = Object.keys(store.wrong).filter((id) => qById[id]);
     const starIds = Object.keys(store.star).filter((id) => qById[id] && !store.wrong[id]);
     const group = (ids) => units.map((u) => ({ u, qs: ids.map((id) => qById[id]).filter((q) => q.unitId === u.id) })).filter((g) => g.qs.length);
-    const listHtml = (ids, kind) => group(ids).map(({ u, qs }) => `<h3>${esc(u.title)}（${qs.length}）</h3>${qs.map((q) => `
+    const listHtml = (ids, kind) => group(ids).map(({ u, qs }) => `<h3>${subjChip(u.subject)} ${esc(u.title)}（${qs.length}）</h3>${qs.map((q) => `
       <details class="card"><summary>${levelChip(q.level)} ${esc(plain(q.stem).slice(0, 70))}…</summary>
         ${questionHtml(q, [], q.answer, {})}${resultHtml(q, store.attempts[q.id] ? store.attempts[q.id].last : 0)}
         <div class="row" style="margin-top:8px"><span class="muted small">作答 ${store.attempts[q.id] ? store.attempts[q.id].n : 0} 次，全對 ${store.attempts[q.id] ? store.attempts[q.id].c : 0} 次</span><span class="spacer"></span>
@@ -739,10 +777,8 @@
   // ---------- 學習紀錄 ----------
   function viewStats() {
     const acc = accuracyOf(questions);
-    const unitRows = units.map((u) => ({ u, a: accuracyOf(questions.filter((q) => q.unitId === u.id)) })).filter((x) => x.a.total);
     const codeRows = Object.values(codeInfo).map((c) => ({ c, a: accuracyOf(c.questions) })).filter((x) => x.a.done)
       .sort((x, y) => x.a.correct / x.a.done - y.a.correct / y.a.done);
-    const lvRows = LEVELS.map((l) => ({ l, a: accuracyOf(questions.filter((q) => q.level === l)) }));
     const hbar = (label, a, href) => `<div class="hbar"><div>${href ? `<a href="${href}">${label}</a>` : label}</div>
       <div class="track" title="已作答 ${a.done}/${a.total}"><div class="fill" style="width:${a.done ? pct(a.correct, a.done) : 0}%"></div></div>
       <div class="val">${a.done ? pct(a.correct, a.done) + "%" : "—"}<span class="small">（${a.done}/${a.total}）</span></div></div>`;
@@ -753,15 +789,19 @@
         <div class="stat"><div class="num">${acc.done ? pct(acc.correct, acc.done) + "%" : "—"}</div><div class="lbl">正確率（以最近一次作答計）</div></div>
         <div class="stat"><div class="num">${store.exams.length}</div><div class="lbl">模擬考次數</div></div>
       </div>
-      <h2>各單元正確率</h2>
-      <div class="card">${unitRows.length ? unitRows.map(({ u, a }) => hbar(esc(u.title), a, `#/kb/${u.id}`)).join("") : `<div class="empty">尚無資料</div>`}
+      <h2>各科正確率</h2>
+      <div class="card">${subjectsWithQ.map((s) => hbar(esc(s.name), accuracyOf(questions.filter((q) => q.subject === s.id)), `#/kb?s=${s.id}`)).join("")}
         <p class="small muted">長條長度＝正確率；括號內為已作答／題數。</p></div>
+      <h2>各單元正確率</h2>
+      <div class="card">${subjectsWithQ.map((s) => `<h3 class="subj-head" style="--sc:${s.color}">${esc(s.name)}</h3>` +
+        unitsOf(s.id).map((u) => ({ u, a: accuracyOf(questions.filter((q) => q.unitId === u.id)) })).filter((x) => x.a.total)
+          .map(({ u, a }) => hbar(esc(u.title), a, `#/kb/${u.id}`)).join("")).join("")}</div>
       <h2>各難度正確率</h2>
-      <div class="card">${lvRows.map(({ l, a }) => hbar(l, a)).join("")}</div>
+      <div class="card">${LEVELS.map((l) => hbar(l, accuracyOf(questions.filter((q) => q.level === l)))).join("")}</div>
       <h2>弱點學習內容</h2>
-      <div class="card">${codeRows.length ? `<table class="list"><thead><tr><th>代碼</th><th>內容</th><th>正確率</th><th></th></tr></thead><tbody>${codeRows.slice(0, 12).map(({ c, a }) =>
-        `<tr><td><a href="#/code/${encodeURIComponent(c.code)}">${c.code}</a></td><td>${md(c.text)}</td><td>${pct(a.correct, a.done)}%（${a.correct}/${a.done}）</td>
-         <td><a class="btn sm" href="#/practice?codes=${encodeURIComponent(c.code)}">練習</a></td></tr>`).join("")}</tbody></table>` : `<div class="empty">作答後會依學習內容代碼找出你的弱點。</div>`}</div>
+      <div class="card">${codeRows.length ? `<table class="list"><thead><tr><th>代碼</th><th>內容</th><th>正確率</th><th></th></tr></thead><tbody>${codeRows.slice(0, 15).map(({ c, a }) =>
+        `<tr><td>${subjChip(c.subject)}<br><a href="#/code/${encodeURIComponent(c.code)}">${c.code}</a></td><td>${md(c.text)}</td><td>${pct(a.correct, a.done)}%（${a.correct}/${a.done}）</td>
+         <td><a class="btn sm" href="#/practice?codes=${encodeURIComponent(c.code)}">練習</a></td></tr>`).join("")}</tbody></table>` : `<div class="empty">作答後會依學習內容找出你的弱點。</div>`}</div>
       ${store.exams.length ? `<h2>模擬考紀錄</h2><div class="card">${examHistoryHtml(30)}</div>` : ""}
       <h2>資料管理</h2>
       <div class="card row">
@@ -774,7 +814,7 @@
       const blob = new Blob([JSON.stringify(store, null, 1)], { type: "application/json" });
       const a = document.createElement("a");
       a.href = URL.createObjectURL(blob);
-      a.download = `學測化學紀錄_${new Date().toISOString().slice(0, 10)}.json`;
+      a.download = `學測自然複習紀錄_${new Date().toISOString().slice(0, 10)}.json`;
       a.click();
       setTimeout(() => URL.revokeObjectURL(a.href), 1000);
     });
@@ -782,17 +822,12 @@
       const f = e.target.files[0];
       if (!f) return;
       f.text().then((t) => {
-        try {
-          const s = JSON.parse(t);
-          store = { attempts: s.attempts || {}, exams: s.exams || [], wrong: s.wrong || {}, star: s.star || {} };
-          save();
-          viewStats();
-        } catch (err) { alert("檔案格式不正確"); }
+        try { store = normalize(JSON.parse(t)); save(); viewStats(); } catch (err) { alert("檔案格式不正確"); }
       });
     });
     document.getElementById("reset").addEventListener("click", () => {
       if (!confirm("確定清除所有作答紀錄、錯題本與考試紀錄？此動作無法復原。")) return;
-      store = { attempts: {}, exams: [], wrong: {}, star: {} };
+      store = EMPTY();
       save();
       viewStats();
     });
@@ -814,20 +849,20 @@
     const keepScroll = parts[0] === "kb" && parts[2];
     switch (parts[0]) {
       case undefined: viewHome(); break;
-      case "kb": parts[1] ? viewKbUnit(parts[1], parts[2]) : viewKbIndex(params.q); break;
+      case "kb": parts[1] ? viewKbUnit(parts[1], parts[2]) : viewKbIndex(params); break;
       case "code": viewCode(parts[1]); break;
       case "practice": parts[1] === "run" ? viewPracticeRun() : viewPracticeSetup(params); break;
       case "exam":
         if (parts[1] === "run") viewExamRun();
         else if (parts[1] && parts[2]) startBankExam(parts[1], parts[2]);
-        else viewExamList();
+        else viewExamList(params);
         break;
       case "review": viewReview(); break;
       case "stats": viewStats(); break;
       default: notFound();
     }
     const titles = { kb: "知識庫", code: "學習內容", practice: "刷題練習", exam: "模擬試題", review: "錯題本", stats: "學習紀錄" };
-    document.title = (titles[parts[0]] ? titles[parts[0]] + "｜" : "") + "學測化學刷題站";
+    document.title = (titles[parts[0]] ? titles[parts[0]] + "｜" : "") + D.title;
     if (!keepScroll) window.scrollTo(0, 0);
   }
   document.getElementById("menuBtn").addEventListener("click", (e) => {
