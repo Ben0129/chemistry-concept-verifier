@@ -104,7 +104,7 @@ def check_file(src):
             if bank["key"][0] == "H" and not any("主張" in p["q"] for p in mx["parts"]):
                 warns.append(f"{tag}: 難題庫混合題建議包含「主張、證據、推論」論證")
         total = P["single"] * len(singles) + P["multi"] * len(multis) + mixed_total
-        if total != 100:
+        if total != 100 and qs:  # 只有混合題的題組卷（無選擇題）不要求 100 分
             errors.append(f"{tag}: 總分 {total}，不是 100")
         sa = [q["answer"] for q in singles]
         if len(sa) >= 5:
