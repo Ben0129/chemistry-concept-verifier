@@ -292,7 +292,8 @@
       <p class="muted">${esc(u.subunits || "")}</p>
       <p>${md(u.summary)}</p>
       <div class="row" style="margin-bottom:16px">
-        ${qs.length ? `<a class="btn primary" href="#/practice?unit=${uid}">刷本單元 ${qs.length} 題</a><a class="btn" href="#/exam?s=${s.id}">${esc(s.name)}試卷</a>` : `<span class="muted small">本單元題庫建置中。</span>`}
+        ${qs.length ? `<a class="btn primary" href="#/practice?unit=${uid}">刷本單元 ${qs.length} 題</a><a class="btn" href="#/exam?s=${s.id}">${esc(s.name)}試卷</a>`
+          : banks.some((b) => b.unitId === uid) ? `<a class="btn primary" href="#/exam?s=${s.id}">做本單元的混合題組試卷</a>` : `<span class="muted small">本單元題庫建置中。</span>`}
       </div>
       <div class="kb-layout">
         <nav class="toc card" aria-label="主題目錄">${u.topics.map((t, k) => `<a href="#/kb/${uid}/${t.id}">${k + 1}. ${esc(t.title)}</a>`).join("")}</nav>
@@ -655,6 +656,8 @@
     const selfSum = Object.values(ex.selfScore || {}).reduce((a, b) => a + (+b || 0), 0);
     const max = ex.items.reduce((a, it) => a + it.pts, 0) + mixedTotal;
     const singlePts = singles[0] ? singles[0].pts : 0, multiPts = multis[0] ? multis[0].pts : 0;
+    let secNo = 0; // 章節編號依實際出現的部分遞增（只有混合題的試卷從「一」開始）
+    const sec = () => ["一", "二", "三"][secNo++];
     app.innerHTML = `
       <div class="small"><a href="#/exam">模擬試題</a></div>
       <h1>${esc(ex.title)}</h1>
@@ -663,10 +666,10 @@
         <div class="row" style="margin-top:10px"><a class="btn" href="#/exam">回試卷列表</a><button class="btn" id="retake">重新作答</button><a class="btn" href="#/review">錯題本</a></div></div>`
       : `<p class="muted small">建議作答時間 ${ex.minutes} 分鐘。作答會自動暫存，重新整理頁面不會遺失。</p>`}
       <section class="card">
-        ${singles.length ? `<div class="exam-sec"><h2 style="margin-top:0">一、單選題（每題 ${singlePts} 分，共 ${singlePts * singles.length} 分）</h2>${singlesHtml}</div>` : ""}
-        ${multis.length ? `<div class="exam-sec"><h2>二、多選題（每題 ${multiPts} 分，共 ${multiPts * multis.length} 分）</h2>
+        ${singles.length ? `<div class="exam-sec"><h2 style="margin-top:0">${sec()}、單選題（每題 ${singlePts} 分，共 ${singlePts * singles.length} 分）</h2>${singlesHtml}</div>` : ""}
+        ${multis.length ? `<div class="exam-sec"><h2>${sec()}、多選題（每題 ${multiPts} 分，共 ${multiPts * multis.length} 分）</h2>
           <p class="small muted">每題有 5 個選項，至少有 1 個正確。所有選項均答對得全部分數；答錯 1 個選項得 60%；答錯 2 個得 20%；答錯多於 2 個或未作答得 0 分。</p>${multisHtml}</div>` : ""}
-        ${mxs.length ? `<div class="exam-sec"><h2>三、混合題（共 ${mixedTotal} 分）</h2>${mixedHtml}</div>` : ""}
+        ${mxs.length ? `<div class="exam-sec"><h2>${sec()}、混合題（共 ${mixedTotal} 分）</h2>${mixedHtml}</div>` : ""}
       </section>
       <div class="sticky-bar">
         <div class="sheet">${Array.from({ length: n }, (_, i) => {
